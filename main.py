@@ -25,7 +25,7 @@ def cracker_creds():
 
 def main():
     c_user, c_pw = cracker_creds()
-    cracker_client = ssh_client('18.217.232.173', 22, c_user, c_pw)
+    cracker_client = ssh_client(IP, 22, c_user, c_pw)
     cracker_scp = SCPClient(cracker_client.get_transport())
 
 if __name__ == "__main__":
