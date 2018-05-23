@@ -5,9 +5,10 @@ pass the server that file x
 launch hashcat under a screen session x
 check if the screen session is still running
 read the cracked hashes
-add argument to handl ethe hash type
+add argument to handle the hash type
 check for errors while executing command
-
+add rule file x
+add verbose mode
 '''
 import paramiko ##need in requirments
 import getpass
@@ -17,12 +18,16 @@ from subModules.scp import SCPClient ##add to submodules
 import random
 import string
 import os
+import time
+import itertools
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Remote hashcat cracker with though ssh')
     parser.add_argument('target', help='[username[:password]@<crackerIP>] if a username or password is not passed, it will prompt', action='store')
     parser.add_argument('-f', '--hash-file', help='Path to the hashes', required=True, default='D:\GitHub\ssHC\hashes.txt')
     parser.add_argument('-w', '--wordlist', help='Path to the wordlist on the cracker box', required=False, default='/usr/share/wordlists/rockyou.txt')
+    parser.add_argument('-r', '--rule-file', help='Path to the rule file on the cracker box', required=False, default='/usr/share/hashcat/rules/best64.rule')
+    parser.add_argument('-v', '--verbose', help='Will show the output of hashcat throughout cracking', default=False, action='store_true')
     return parser.parse_args()
 
 def ssh_client(host, port, user, pw):
@@ -48,18 +53,23 @@ def cracker_creds(uname=False, passwd=False, **kwargs):
         return pw
 
 
-def generate_cmd(hash_file, wordlist):
-    rand = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-    id = 'ssHC-' + rand
+def generate_cmd(id, hash_file, wordlist, rule_file, verbose=False):
     command = 'hashcat --session {}'.format(id)
     command += ' -m {} '
-    command += '-o /tmp/{} /tmp/{} {} --force'.format(id, hash_file, wordlist)
+    command += '-o /tmp/{} /tmp/{} {} -r {} --force'.format(id, hash_file, wordlist, rule_file)
     command = command.format('1000')
-    screen = 'screen -S {} -dm {}'. format(id, command)
+    if verbose:
+        return command
 
-    print("[*]Running on cracker:")
-    print("     {}".format(screen))
-    return command
+    screen = 'screen -S {} -dm {}'. format(id, command)
+    return screen
+
+##Print out the exact output of hashcat
+def runVerbose(id, args):
+    print("Running verbose")
+    stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(id, (id+'.hash'),args.wordlist, args.rule_file, True))
+
+    print('stdout: ', stdout.read().decode())
 
 def main(args):
     if '@' in args.target:
@@ -75,18 +85,43 @@ def main(args):
         target = args.target
         c_user, c_pw = cracker_creds(uname=True, passwd=True)
 
+    global cracker_client
     cracker_client = ssh_client(target, 22, c_user, c_pw)
     cracker_scp = SCPClient(cracker_client.get_transport())
 
-    ##Change this to work on linux
-    if 'nt' in os.name:
-        cracker_scp.put(os.getcwd()+'\\'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
-    elif 'posix' in os.name:
-        cracker_scp.put(os.getcwd()+'/'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
-    #cracker_client.exec_command('touch /tmp/test')
+    rand = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    id = 'ssHC-' + rand
 
-    ##change to args.wordlits and add hash type
-    stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(('ssHC-'+args.hash_file),'/usr/share/wordlists/rockyou.txt'))
+    if 'nt' in os.name:
+        cracker_scp.put(os.getcwd()+'\\'+args.hash_file,'/tmp/'+id+'.hash')
+    elif 'posix' in os.name:
+        cracker_scp.put(os.getcwd()+'/'+args.hash_file,'/tmp/'+id+'.hash')
+
+
+    print("[+]Cracking started")
+    print('[*]Id is: '+ id)
+
+    if args.verbose:
+        runVerbose(id, args)
+    else:
+        stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(id, (id+'.hash'),args.wordlist, args.rule_file))
+
+    ##while screen session stiil exists print spinning bar
+    while True:
+        print(cracker_client.exec_command('screen -ls')[1].read().decode())
+        if id in cracker_client.exec_command('screen -ls')[1].read().decode():
+            print(next(spinner), end = '\r')
+        else:
+            break
+    ##once the program finishs print out the output
+    __, stdout, stderr = cracker_client.exec_command('cat /tmp/'+id)
+    print('{}'.format(stdout.read().decode()), end='\r')
+    #time.sleep(3)
 
 if __name__ == "__main__":
-    main(parse_args())
+    spinner = itertools.cycle(['-', '/', '|', '\\'])
+    try:
+        main(parse_args())
+    except KeyboardInterrupt:
+        print('[!]Exiting now')
+        sys.exit()
