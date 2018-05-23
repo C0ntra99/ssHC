@@ -18,7 +18,7 @@ import os
 def parse_args():
     parser = argparse.ArgumentParser(description='Remote hashcat cracker with though ssh')
     parser.add_argument('target', help='[username[:password]@<crackerIP>] if a username or password is not passed, it will prompt', action='store')
-    parser.add_argument('-f', '--hash-file', help='Path to the hashes', required=False, default='D:\GitHub\ssHC\hashes.txt')
+    parser.add_argument('-f', '--hash-file', help='Path to the hashes', required=True, default='D:\GitHub\ssHC\hashes.txt')
     parser.add_argument('-w', '--wordlist', help='Path to the wordlist on the cracker box', required=False, default='/usr/share/wordlists/rockyou.txt')
     return parser.parse_args()
 
@@ -76,7 +76,10 @@ def main(args):
     cracker_scp = SCPClient(cracker_client.get_transport())
 
     ##Change this to work on linux
-    cracker_scp.put(os.getcwd()+'\\'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
+    if 'posix' in os.name:
+        cracker_scp.put(os.getcwd()+'\\'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
+    elif 'nt' in os.name:
+        print(os.getcwd()+'/'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
     #cracker_client.exec_command('touch /tmp/test')
 
     stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(args.hash_file,'/usr/share/rockyou.txt'))
