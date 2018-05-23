@@ -2,9 +2,12 @@
 Create unique id for each hash that needs to be cracked x
 write to a file x
 pass the server that file x
-launch hashcat under a screen session
+launch hashcat under a screen session x
 check if the screen session is still running
 read the cracked hashes
+add argument to handl ethe hash type
+check for errors while executing command
+
 '''
 import paramiko ##need in requirments
 import getpass
@@ -52,10 +55,10 @@ def generate_cmd(hash_file, wordlist):
     command += ' -m {} '
     command += '-o /tmp/{} /tmp/{} {} --force'.format(id, hash_file, wordlist)
     command = command.format('1000')
-    #screen = 'screen -S {} -dm {}'. format(id, command)
+    screen = 'screen -S {} -dm {}'. format(id, command)
 
     print("[*]Running on cracker:")
-    print("     {}".format(command))
+    print("     {}".format(screen))
     return command
 
 def main(args):
@@ -76,13 +79,14 @@ def main(args):
     cracker_scp = SCPClient(cracker_client.get_transport())
 
     ##Change this to work on linux
-    if 'posix' in os.name:
+    if 'nt' in os.name:
         cracker_scp.put(os.getcwd()+'\\'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
-    elif 'nt' in os.name:
-        print(os.getcwd()+'/'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
+    elif 'posix' in os.name:
+        cracker_scp.put(os.getcwd()+'/'+args.hash_file,'/tmp/ssHC-'+args.hash_file)
     #cracker_client.exec_command('touch /tmp/test')
 
-    stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(args.hash_file,'/usr/share/rockyou.txt'))
+    ##change to args.wordlits and add hash type
+    stdin, stdout, stderr = cracker_client.exec_command(generate_cmd(('ssHC-'+args.hash_file),'/usr/share/wordlists/rockyou.txt'))
 
 if __name__ == "__main__":
     main(parse_args())
