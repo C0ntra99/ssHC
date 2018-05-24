@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 '''
 Create unique id for each hash that needs to be cracked x
 write to a file x
@@ -9,6 +10,7 @@ add argument to handle the hash type
 check for errors while executing command
 add rule file x
 add verbose mode
+write install script
 '''
 import paramiko ##need in requirments
 import getpass
