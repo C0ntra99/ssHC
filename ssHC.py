@@ -42,7 +42,6 @@ def parse_args():
     elif not args.hash_file and not args.check:
         parser.print_help()
         sys.exit("[!]Please use either -f or -c when running")
-    return args
 
 def ssh_client(host, port, user, pw, key=None):
 
@@ -66,7 +65,7 @@ def ssh_client(host, port, user, pw, key=None):
 
 def cracker_creds(uname=False, passwd=False, **kwargs):
     if uname and passwd:
-        username = input('[*] Crckerbox username: ')
+        username = input('[*]Crackerbox username: ')
         pw = pw = getpass.getpass('[*]Crackerbox password: ')
         return username, pw
     if passwd:
@@ -116,15 +115,17 @@ def main(args):
         rand = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
         id = 'ssHC-' + rand
 
+    ##Put into function
     if args.check:
         id = args.check
         if args.check in cracker_client.exec_command('tmux ls')[1].read().decode():
             print("[*]Session {} is currently running".format(args.check))
         else:
-            __, stdout, stderr = cracker_client.exec_command('cat /tmp/'+ id)
+            stdin, stdout, stderr = cracker_client.exec_command('cat /tmp/'+id)
             if not stdout.read().decode():
                 print("[+]Session did not exists")
             else:
+                stdin, stdout, stderr = cracker_client.exec_command('cat /tmp/'+id)
                 print("[+]Passwords for session {}".format(id))
                 print("{}".format(stdout.read().decode()))
     else:
